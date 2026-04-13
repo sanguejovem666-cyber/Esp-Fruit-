@@ -1,0 +1,318 @@
+--// ================================================
+--// HYDRA SPART TORNADO ENGINE 93 - TUBERS93 BLACK/GRAY
+--// Z TOTALMENTE CORRIGIDO - Tornado PARA quando mouse para
+--// Não se aproxima mais da câmera ou do player
+--// ================================================
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = gethui and gethui() or game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local CONFIG = {
+	Radius = 45, PullStrength = 180, LiftStrength = 65,
+	TornadoColor = Color3.fromRGB(55,55,65),
+	RoamRadius = 120, RoamSpeed = 0.06
+}
+
+local tornadoCenter, visualPart = nil, nil
+local savedHome = nil
+local isFollowing = false
+local aiMode = false
+local attackMode = false
+local rampStart = 0
+local currentRadius = CONFIG.Radius
+local currentPull = CONFIG.PullStrength
+local currentLift = CONFIG.LiftStrength
+local mass = 0
+local targetedPlayers = {}
+local playerEntries = {}
+local teleportEntries = {}
+
+-- Variáveis para correção do Z
+local lastMousePosition = Vector3.new(0, 0, 0)
+local lastMouseUpdate = tick()
+local MOUSE_MOVE_THRESHOLD = 1.2   -- Quanto maior, mais "parado" o mouse precisa estar
+
+--// TELA DE CARREGAMENTO (preto/cinza)
+local loadGui = Instance.new("ScreenGui", CoreGui)
+loadGui.Name = "HydraLoad93"
+local loadFrame = Instance.new("Frame", loadGui)
+loadFrame.Size = UDim2.new(1,0,1,0)
+loadFrame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+local loadGradient = Instance.new("UIGradient", loadFrame)
+loadGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(22,22,27)), ColorSequenceKeypoint.new(1,Color3.fromRGB(12,12,17))}
+loadGradient.Rotation = 135
+
+local loadTitle = Instance.new("TextLabel", loadFrame)
+loadTitle.Size = UDim2.new(0.6,0,0.2,0); loadTitle.Position = UDim2.new(0.2,0,0.3,0)
+loadTitle.BackgroundTransparency = 1
+loadTitle.Text = "HYDRA SPART"; loadTitle.TextColor3 = Color3.fromRGB(235,235,235)
+loadTitle.Font = Enum.Font.GothamBlack; loadTitle.TextSize = 62
+
+local loadSub = Instance.new("TextLabel", loadFrame)
+loadSub.Size = UDim2.new(0.6,0,0.08,0); loadSub.Position = UDim2.new(0.2,0,0.48,0)
+loadSub.BackgroundTransparency = 1
+loadSub.Text = "TORNADO ENGINE 93 - LOADING"; loadSub.TextColor3 = Color3.fromRGB(200,200,200)
+loadSub.Font = Enum.Font.GothamMedium; loadSub.TextSize = 28
+
+local loadBarBG = Instance.new("Frame", loadFrame)
+loadBarBG.Size = UDim2.new(0.4,0,0.03,0); loadBarBG.Position = UDim2.new(0.3,0,0.65,0)
+loadBarBG.BackgroundColor3 = Color3.fromRGB(30,30,35)
+Instance.new("UICorner", loadBarBG).CornerRadius = UDim.new(1,0)
+
+local loadBar = Instance.new("Frame", loadBarBG)
+loadBar.Size = UDim2.new(0,0,1,0); loadBar.BackgroundColor3 = Color3.fromRGB(70,70,75)
+Instance.new("UICorner", loadBar).CornerRadius = UDim.new(1,0)
+
+task.spawn(function()
+	for i=1,100 do
+		loadBar:TweenSize(UDim2.new(i/100,0,1,0),"Out","Quad",0.025,true)
+		task.wait(0.025)
+	end
+	task.wait(0.4); loadGui:Destroy()
+end)
+
+local function Notify(msg)
+	local n = Instance.new("Frame")
+	n.Size = UDim2.new(0,340,0,58); n.Position = UDim2.new(1,-360,1,-80)
+	n.BackgroundColor3 = Color3.fromRGB(22,22,27)
+	Instance.new("UICorner",n).CornerRadius = UDim.new(0,14)
+	local t = Instance.new("TextLabel",n)
+	t.Size = UDim2.new(1,-24,1,0); t.Position = UDim2.new(0,12,0,0)
+	t.BackgroundTransparency = 1; t.Text = msg; t.TextColor3 = Color3.fromRGB(235,235,235)
+	t.Font = Enum.Font.GothamMedium; t.TextSize = 16; t.TextXAlignment = Enum.TextXAlignment.Left
+	n.Parent = gui
+	TweenService:Create(n,TweenInfo.new(0.4,Enum.EasingStyle.Back),{Position=UDim2.new(1,-360,1,-150)}):Play()
+	task.delay(4,function() TweenService:Create(n,TweenInfo.new(0.45),{Position=UDim2.new(1,-360,1,-80)}):Play(); task.wait(0.45); n:Destroy() end)
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "HydraSpart_TornadoEngine93_Tab"
+gui.ResetOnSpawn = false
+gui.Parent = CoreGui
+
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0,680,0,520)
+mainFrame.Position = UDim2.new(0.5,-340,0.5,-260)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18,18,23)
+mainFrame.BorderSizePixel = 0
+Instance.new("UICorner",mainFrame).CornerRadius = UDim.new(0,16)
+mainFrame.Visible = false
+
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1,0,0,60)
+titleBar.BackgroundColor3 = Color3.fromRGB(14,14,19)
+Instance.new("UICorner",titleBar).CornerRadius = UDim.new(0,16)
+local titleText = Instance.new("TextLabel", titleBar)
+titleText.Size = UDim2.new(1,0,1,0); titleText.BackgroundTransparency = 1
+titleText.Text = "Tab Tornado Engine 93"
+titleText.TextColor3 = Color3.fromRGB(235,235,235)
+titleText.Font = Enum.Font.GothamBlack; titleText.TextSize = 26
+
+local sidebar = Instance.new("Frame", mainFrame)
+sidebar.Size = UDim2.new(0,180,1,-60); sidebar.Position = UDim2.new(0,0,0,60)
+sidebar.BackgroundColor3 = Color3.fromRGB(15,15,20)
+
+local tabList = Instance.new("UIListLayout", sidebar)
+tabList.Padding = UDim.new(0,4); tabList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function createTab(name, icon)
+	local btn = Instance.new("TextButton", sidebar)
+	btn.Size = UDim2.new(1,0,0,52)
+	btn.BackgroundColor3 = Color3.fromRGB(25,25,30)
+	btn.Text = "  "..icon.."  "..name
+	btn.TextColor3 = Color3.fromRGB(210,210,215)
+	btn.Font = Enum.Font.GothamMedium; btn.TextSize = 17
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
+	return btn
+end
+
+local tabControls = createTab("Controls", "🌪️")
+local tabTargets = createTab("Targets", "🎯")
+local tabAI = createTab("AI Roaming", "🤖")
+local tabAttack = createTab("Attack", "⚔️")
+local tabExtra = createTab("Extra", "🔧")
+local tabServer = createTab("Server Control", "🖥️")
+
+local content = Instance.new("Frame", mainFrame)
+content.Size = UDim2.new(1,-190,1,-70); content.Position = UDim2.new(0,190,0,70)
+content.BackgroundTransparency = 1
+
+local tabs = {}
+for i=1,6 do
+	tabs[i] = Instance.new("Frame", content)
+	tabs[i].Size = UDim2.new(1,0,1,0)
+	tabs[i].BackgroundTransparency = 1
+	tabs[i].Visible = (i==1)
+end
+
+-- ===================== MOVIMENTO DO TORNADO (Z CORRIGIDO) =====================
+local function createTornado(pos)
+	if tornadoCenter then tornadoCenter:Destroy() end
+	tornadoCenter = Instance.new("Part", workspace)
+	tornadoCenter.Name = "HydraVortice93"
+	tornadoCenter.Size = Vector3.new(4,4,4)
+	tornadoCenter.Anchored = true
+	tornadoCenter.CanCollide = false
+	tornadoCenter.Transparency = 1
+	tornadoCenter.Position = pos
+	
+	visualPart = Instance.new("Part", tornadoCenter)
+	visualPart.Size = Vector3.new(currentRadius,72,currentRadius)
+	visualPart.Anchored = true
+	visualPart.CanCollide = false
+	visualPart.Shape = Enum.PartType.Cylinder
+	visualPart.Orientation = Vector3.new(0,0,90)
+	visualPart.Position = pos + Vector3.new(0,36,0)
+	visualPart.Color = CONFIG.TornadoColor
+	visualPart.Material = Enum.Material.ForceField
+	visualPart.Transparency = 0.52
+	
+	RunService.RenderStepped:Connect(function()
+		if visualPart and visualPart.Parent then
+			visualPart.CFrame *= CFrame.Angles(math.rad(15),0,0)
+		end
+	end)
+	Notify("Tornado criado - Z agora respeita mouse parado")
+end
+
+RunService.Heartbeat:Connect(function()
+	if not tornadoCenter then return end
+
+	if isFollowing then
+		local camera = workspace.CurrentCamera
+		local rayOrigin = camera.CFrame.Position
+		local direction = (mouse.Hit.Position - rayOrigin).Unit * 600
+
+		local params = RaycastParams.new()
+		params.FilterDescendantsInstances = {player.Character, tornadoCenter}
+		params.FilterType = Enum.RaycastFilterType.Exclude
+
+		local result = workspace:Raycast(rayOrigin, direction, params)
+
+		if result then
+			local hitPos = result.Position
+			
+			-- 🔒 trava altura (remove bug do Z vindo na tela)
+			local target = Vector3.new(hitPos.X, tornadoCenter.Position.Y, hitPos.Z)
+
+			local moved = (target - lastMousePosition).Magnitude > MOUSE_MOVE_THRESHOLD
+
+			if moved then
+				tornadoCenter.Position = tornadoCenter.Position:Lerp(target, 0.2)
+				lastMousePosition = target
+				lastMouseUpdate = tick()
+			end
+		end
+
+	elseif aiMode and savedHome then
+		local t = tick() * CONFIG.RoamSpeed
+		local angle = t % (math.pi*2)
+
+		local offset = Vector3.new(
+			math.sin(angle)*CONFIG.RoamRadius + math.noise(t*1.3)*35,
+			math.noise(t*2)*12,
+			math.cos(angle)*CONFIG.RoamRadius + math.noise(t*0.8+50)*35
+		)
+
+		local targetPos = savedHome + offset
+		tornadoCenter.Position = tornadoCenter.Position:Lerp(targetPos, 0.085)
+	end
+
+	-- Atualiza visual
+	if visualPart then
+		visualPart.Size = Vector3.new(currentRadius,72,currentRadius)
+		visualPart.Position = tornadoCenter.Position + Vector3.new(0,36,0)
+	end
+
+	-- Física do tornado (mantida)
+	local params = OverlapParams.new()
+	params.FilterDescendantsInstances = {tornadoCenter, player.Character}
+	params.FilterType = Enum.RaycastFilterType.Exclude
+
+	local parts = workspace:GetPartBoundsInRadius(tornadoCenter.Position, currentRadius, params)
+	local pulled = 0
+
+	for _,part in parts do
+		if part:IsA("BasePart") and not part.Anchored then
+			pulled += 1
+			local dir = (tornadoCenter.Position - part.Position).Unit
+			part.AssemblyLinearVelocity = dir * currentPull + Vector3.new(0,currentLift,0)
+		end
+	end
+
+	if pulled > 0 then
+		mass += pulled * 0.15
+		currentRadius = math.clamp(CONFIG.Radius + mass * 0.92, CONFIG.Radius, 480)
+		currentPull = math.clamp(CONFIG.PullStrength + mass * 4.2, CONFIG.PullStrength, 3800)
+		currentLift = math.clamp(CONFIG.LiftStrength + mass * 2.1, CONFIG.LiftStrength, 1250)
+	end
+
+	if attackMode then
+		local elapsed = tick() - rampStart
+
+		currentRadius = math.clamp(CONFIG.Radius + elapsed*26, CONFIG.Radius, 480)
+		currentPull = math.clamp(CONFIG.PullStrength + elapsed*138, CONFIG.PullStrength, 3800)
+		currentLift = math.clamp(CONFIG.LiftStrength + elapsed*62, CONFIG.LiftStrength, 1250)
+
+		for plr,_ in targetedPlayers do
+			if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+				local hrp = plr.Character.HumanoidRootPart
+				local dir = (tornadoCenter.Position - hrp.Position).Unit
+				hrp.AssemblyLinearVelocity += dir * currentPull * 2.4 + Vector3.new(0, currentLift*2.9, 0)
+			end
+		end
+	end
+end)
+
+-- Keybinds
+UIS.InputBegan:Connect(function(i,gpe)
+	if gpe then return end
+	if i.KeyCode == Enum.KeyCode.Z then
+		if not tornadoCenter then createTornado(mouse.Hit.Position) end
+		isFollowing = not isFollowing
+		aiMode = false
+		Notify("FOLLOW MOUSE: "..(isFollowing and "ON - Para quando mouse parar" or "OFF"))
+	end
+	if i.KeyCode == Enum.KeyCode.C then
+		savedHome = mouse.Hit.Position
+		Notify("HOME SALVO - IA rondando")
+	end
+	if i.KeyCode == Enum.KeyCode.X then
+		if not tornadoCenter then createTornado(mouse.Hit.Position) end
+		aiMode = not aiMode
+		isFollowing = false
+		Notify("AI ROAMING: "..(aiMode and "ON" or "OFF"))
+	end
+	if i.KeyCode == Enum.KeyCode.V then
+		if not tornadoCenter then createTornado(mouse.Hit.Position) end
+		attackMode = not attackMode
+		if attackMode then rampStart = tick() end
+		Notify(attackMode and "ATTACK ON" or "ATTACK OFF")
+	end
+end)
+
+-- Botão flutuante
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size = UDim2.new(0,110,0,40)
+toggleBtn.Position = UDim2.new(1,-130,0,10)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(22,22,27)
+toggleBtn.Text = "🌪️ TORNADO"
+toggleBtn.TextColor3 = Color3.fromRGB(235,235,235)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 16
+Instance.new("UICorner",toggleBtn).CornerRadius = UDim.new(0,10)
+toggleBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+createTornado(mouse.Hit.Position)
+Notify("✅ Z totalmente corrigido - Tornado agora para quando mouse parar")
