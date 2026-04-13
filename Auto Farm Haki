@@ -2,6 +2,55 @@
     Vortice Hub - Static Flight AI Edition (500+ linhas)
     IA Embutida + Auto Execução Completa
 ]]
+local Players = game:GetService("Players")
+local Teams = game:GetService("Teams")
+local Player = Players.LocalPlayer
+
+-- 🏴 AUTO PIRATES
+task.spawn(function()
+    Player.CharacterAdded:Wait()
+    task.wait(1.5)
+
+    for i = 1, 15 do
+        if Player.Team and Player.Team.Name == "Pirates" then
+            break
+        end
+
+        local team = Teams:FindFirstChild("Pirates")
+        if team then
+            Player.Team = team
+        end
+
+        task.wait(0.5)
+    end
+end)
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+
+local Player = Players.LocalPlayer
+
+_G.AutoHaki = true -- pode integrar com toggle depois
+
+task.spawn(function()
+    while _G.AutoHaki do
+        local char = Player.Character
+        if char then
+            -- tenta detectar se já está ativo (ajusta se tiver valor específico no seu jogo)
+            local hakiAtivo = char:FindFirstChild("HasBuso") 
+                or char:FindFirstChild("Haki") 
+                or char:FindFirstChild("Buso")
+
+            if not hakiAtivo then
+                -- ativa Haki (tecla E)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            end
+        end
+
+        task.wait(2) -- intervalo pra não spamar
+    end
+end)
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
