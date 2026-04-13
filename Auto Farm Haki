@@ -1,0 +1,234 @@
+--[[
+    Vortice Hub - Static Flight AI Edition (500+ linhas)
+    IA Embutida + Auto Execução Completa
+]]
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Teams = game:GetService("Teams")
+local StarterGui = game:GetService("StarterGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+
+local coordenadaSegura = CFrame.new(-7797.5, 5545.5, -486.2)
+local fileName = "VorticeConfig.json"
+local tempoEsperaE = 3
+
+-- === IA EMBUTIDA - SISTEMA DE DECISÃO ===
+local AI = {}
+AI.State = "IDLE"
+AI.DecisionTimer = 0
+AI.LastActionTime = tick()
+AI.ServerAttempts = 0
+AI.MaxAttempts = 5
+AI.PlayerCountThreshold = 20
+AI.DebugMode = true
+
+function AI:Init()
+    self.State = "INIT"
+    self:Log("IA Inicializada - Modo Auto Treino Pirata")
+end
+
+function AI:Log(msg)
+    if self.DebugMode then
+        print("[Vortice AI] " .. msg)
+        StarterGui:SetCore("SendNotification", {Title = "Vortice AI", Text = msg, Duration = 3})
+    end
+end
+
+function AI:EvaluateConditions()
+    if not Player.Character then return "WAIT_CHARACTER" end
+    if not Player.Team or Player.Team.Name ~= "Pirates" then return "JOIN_TEAM" end
+    if tick() - self.LastActionTime < 1.5 then return "COOLDOWN" end
+    return "READY"
+end
+
+function AI:DecideNextAction()
+    local condition = self:EvaluateConditions()
+    self:Log("Decisão: " .. condition)
+    
+    if condition == "JOIN_TEAM" then
+        return "JOIN_TEAM"
+    elseif condition == "READY" then
+        return "ACTIVATE_SKILLS"
+    elseif condition == "COOLDOWN" then
+        return "WAIT"
+    else
+        return "RETRY"
+    end
+end
+
+function AI:ExecuteAction(action)
+    if action == "JOIN_TEAM" then
+        self:Log("Executando JOIN_TEAM")
+        local pirateTeam = Teams:FindFirstChild("Pirates")
+        if pirateTeam then Player.Team = pirateTeam end
+        task.wait(1.8)
+    elseif action == "ACTIVATE_SKILLS" then
+        self:Log("Ativando J e E")
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.J, false, game)
+        task.wait(0.28)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.J, false, game)
+        task.wait(1.4)
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        task.wait(0.28)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        self.LastActionTime = tick()
+    elseif action == "WAIT" then
+        task.wait(0.5)
+    end
+end
+
+function AI:RunCycle()
+    while true do
+        local nextAction = self:DecideNextAction()
+        self:ExecuteAction(nextAction)
+        if nextAction == "ACTIVATE_SKILLS" then
+            break
+        end
+        task.wait(0.3)
+    end
+end
+
+-- === VOO ESTÁTICO ===
+local function VooEstatico()
+    local Character = Player.Character or Player.CharacterAdded:Wait()
+    local HumRoot = Character:WaitForChild("HumanoidRootPart", 10)
+    for _, v in ipairs(HumRoot:GetChildren()) do
+        if v.Name == "VorticeGyro" or v.Name == "VorticeVel" then v:Destroy() end
+    end
+    local bg = Instance.new("BodyGyro", HumRoot)
+    bg.Name = "VorticeGyro"
+    bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.cframe = coordenadaSegura
+    local bv = Instance.new("BodyVelocity", HumRoot)
+    bv.Name = "VorticeVel"
+    bv.velocity = Vector3.new(0, 0, 0)
+    bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    local distancia = (HumRoot.Position - coordenadaSegura.Position).Magnitude
+    local tempo = distancia / 300
+    local tween = TweenService:Create(HumRoot, TweenInfo.new(tempo, Enum.EasingStyle.Linear), {CFrame = coordenadaSegura})
+    tween:Play()
+    tween.Completed:Wait()
+    return bg, bv
+end
+
+-- === SERVER HOP ===
+local function SmartServerHop()
+    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if not req then return end
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"
+    local success, response = pcall(function() return req({Url = url, Method = "GET"}) end)
+    if success and response.StatusCode == 200 then
+        local data = HttpService:JSONDecode(response.Body)
+        local bestServer = nil
+        for _, server in ipairs(data.data or {}) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                local visited = false
+                for _, id in ipairs(sessionData.VisitedServers) do
+                    if id == server.id then visited = true break end
+                end
+                if not visited then
+                    bestServer = server.id
+                    break
+                end
+            end
+        end
+        if bestServer then
+            table.insert(sessionData.VisitedServers, bestServer)
+            if #sessionData.VisitedServers > 60 then table.remove(sessionData.VisitedServers, 1) end
+            writefile(fileName, HttpService:JSONEncode(sessionData))
+            task.wait(1.2)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, bestServer, Player)
+        else
+            sessionData.VisitedServers = {}
+            writefile(fileName, HttpService:JSONEncode(sessionData))
+            task.wait(2)
+            SmartServerHop()
+        end
+    end
+end
+
+-- ===================== AUTO EXECUÇÃO COM IA =====================
+AI:Init()
+task.spawn(function()
+    local entrou = false
+    for i = 1, 20 do
+        if Player.Team and Player.Team.Name == "Pirates" then
+            entrou = true
+            break
+        end
+        local pt = Teams:FindFirstChild("Pirates")
+        if pt then Player.Team = pt end
+        task.wait(0.5)
+    end
+    if not entrou then return end
+
+    AI:RunCycle()
+
+    local gyro, vel = VooEstatico()
+
+    task.wait(tempoEsperaE)
+
+    SmartServerHop()
+
+    if gyro then gyro:Destroy() end
+    if vel then vel:Destroy() end
+end)
+
+print("trouxa!!!")
+
+-- === FUNÇÃO DE AUTO-EXECUÇÃO E RESILIÊNCIA ===
+local function IniciarRotinaDeServidor()
+    AI:Log("Detectando estado do servidor...")
+    
+    -- 1. Garante que o personagem existe antes de começar
+    local char = Player.Character or Player.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 10)
+    if not root then return end
+    
+    -- 2. Limpa qualquer estabilizador antigo de uma execução anterior (Anti-Bug)
+    for _, v in ipairs(root:GetChildren()) do
+        if v.Name == "VorticeGyro" or v.Name == "VorticeVel" then v:Destroy() end
+    end
+    
+    -- 3. Execução da IA e Lógica de Treino
+    task.spawn(function()
+        AI:Log("Iniciando rotina de treino...")
+        
+        -- Garante Team Pirata
+        local entrou = false
+        for i = 1, 10 do
+            if Player.Team and Player.Team.Name == "Pirates" then entrou = true break end
+            local pt = Teams:FindFirstChild("Pirates")
+            if pt then Player.Team = pt end
+            task.wait(0.5)
+        end
+        
+        -- Roda ciclo de Skills
+        AI:RunCycle()
+        
+        -- Voa e trava
+        local gyro, vel = VooEstatico()
+        
+        -- Espera treino
+        task.wait(tempoEsperaE)
+        
+        -- Hop Automático
+        SmartServerHop()
+    end)
+end
+
+-- === GATILHO DE AUTO-EXECUÇÃO (O SEGREDO DO AUTO-HOP) ===
+-- Isso faz o script rodar SEMPRE que você entrar em um novo servidor
+-- independentemente de como você entrou (via comando ou troca manual).
+if Player.Character then
+    IniciarRotinaDeServidor()
+end
+
+Player.CharacterAdded:Connect(function()
+    task.wait(2) -- Tempo para carregar o mapa
+    IniciarRotinaDeServidor()
+end)
