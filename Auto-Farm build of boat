@@ -1,0 +1,107 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- Configurações
+local active = false
+local velocidade = 80 -- Ajuste a velocidade aqui
+local coords = {
+    Vector3.new(-51.81, 100.51, 1335.00),
+    Vector3.new(-62.71, 95.73, 1388.77),
+    Vector3.new(-41.52, 96.18, 2113.93),
+    Vector3.new(-39.83, 105.21, 2162.35),
+    Vector3.new(-46.74, 108.86, 2929.91),
+    Vector3.new(-50.56, 27.28, 3647.41),
+    Vector3.new(-53.73, 49.79, 3699.02),
+    Vector3.new(-57.28, 88.42, 4411.10),
+    Vector3.new(-61.39, 37.21, 5186.54),
+    Vector3.new(-62.03, 72.91, 6003.12)
+}
+
+-- Variável para controlar a plataforma
+local plataformaAtual = nil
+
+-- Função para criar a base de apoio
+local function criarPlataforma(posicao)
+    if plataformaAtual then plataformaAtual:Destroy() end
+    
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(6, 1, 6)
+    part.Position = posicao - Vector3.new(0, 3.5, 0) -- Fica logo abaixo dos pés
+    part.Anchored = true
+    part.Transparency = 0.5 -- Meio transparente (apenas visual)
+    part.BrickColor = BrickColor.new("Cyan") -- Cor para você ver onde está
+    part.CanCollide = true
+    part.Parent = game.Workspace
+    plataformaAtual = part
+end
+
+-- Função de Voo Linear
+local function voarPara(targetPos)
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local root = character.HumanoidRootPart
+    
+    local distancia = (root.Position - targetPos).Magnitude
+    local tempo = distancia / velocidade
+    
+    -- EasingStyle.Linear garante que ele vá RETO e constante
+    local tweenInfo = TweenInfo.new(tempo, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    
+    tween:Play()
+    tween.Completed:Wait()
+    
+    -- Quando chegar, cria a plataforma para travar o player parado
+    criarPlataforma(targetPos)
+end
+
+-- Interface Profissional (Dark Theme)
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+screenGui.ResetOnSpawn = false
+
+local button = Instance.new("TextButton", screenGui)
+button.Size = UDim2.new(0, 160, 0, 45)
+button.Position = UDim2.new(0.5, -80, 0.85, 0)
+button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "AUTO-VÔO: OFF"
+button.Font = Enum.Font.Code
+button.TextSize = 14
+
+local corner = Instance.new("UICorner", button)
+
+-- Loop Principal
+task.spawn(function()
+    while true do
+        if active then
+            for i, pos in ipairs(coords) do
+                if not active then break end
+                
+                voarPara(pos)
+                task.wait(1.5) -- Tempo parado em cada coordenada
+                
+                if i == #coords and active then
+                    if plataformaAtual then plataformaAtual:Destroy() end
+                    player.Character.Humanoid.Health = 0
+                    player.CharacterAdded:Wait()
+                    task.wait(2)
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- Controle do Botão
+button.MouseButton1Click:Connect(function()
+    active = not active
+    if active then
+        button.Text = "AUTO-VÔO: ON"
+        button.TextColor3 = Color3.fromRGB(0, 255, 120)
+    else
+        button.Text = "AUTO-VÔO: OFF"
+        button.TextColor3 = Color3.fromRGB(255, 80, 80)
+        if plataformaAtual then plataformaAtual:Destroy() end
+    end
+end)
