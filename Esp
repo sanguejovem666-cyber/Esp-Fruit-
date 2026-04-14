@@ -114,7 +114,7 @@ end)
 -- Loop principal
 task.spawn(function()
     entrarPirata() -- Entra no time assim que injeta
-    avisar("XENO LOADED", "ESP Ativo | Time Pirata OK")
+    avisar("Esp HydraSpart LOADED", "ESP Ativo | Time Pirata OK")
     
     while true do
         -- Busca frutas continuamente no Workspace
