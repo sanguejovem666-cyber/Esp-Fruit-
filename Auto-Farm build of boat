@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 
 -- Configurações
 local active = false
-local velocidade = 100          -- Ajuste aqui (estudos por segundo)
+local velocidade = 200          -- Ajuste aqui (estudos por segundo)
 local tempoParado = 1.5        -- Tempo parado em cada ponto
 
 local coords = {
