@@ -1,1 +1,128 @@
-https://raw.githubusercontent.com/sanguejovem666-cyber/Esp-Fruit-/refs/heads/main/Cmd
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local localPlayer = Players.LocalPlayer
+
+-- --- CONFIGURAÇÕES ---
+local VELOCIDADE = 200
+
+-- Notificação discreta
+local function avisar(titulo, txt)
+    StarterGui:SetCore("SendNotification", {
+        Title = titulo,
+        Text = txt,
+        Duration = 2
+    })
+end
+
+-- --- 1. ENTRAR NO TIME PIRATA (AUTO) ---
+local function entrarPirata()
+    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and 
+                   game:GetService("ReplicatedStorage").Remotes:FindFirstChild("CommF_")
+    if remote then
+        remote:InvokeServer("SetTeam", "Pirates")
+    end
+end
+
+-- --- 2. ESP DE FRUTAS (AUTO-ATIVO) ---
+local function aplicarVisual(obj)
+    if not obj:FindFirstChild("XenoFruitESP") then
+        -- Efeito de brilho/Highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "XenoFruitESP"
+        highlight.FillColor = Color3.fromRGB(0, 255, 127) -- Verde Brilhante
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.3
+        highlight.Parent = obj
+
+        -- Texto com nome da fruta
+        local bill = Instance.new("BillboardGui", obj)
+        bill.Name = "FruitLabel"
+        bill.AlwaysOnTop = true
+        bill.Size = UDim2.new(0, 100, 0, 50)
+        bill.ExtentsOffset = Vector3.new(0, 4, 0)
+
+        local txt = Instance.new("TextLabel", bill)
+        txt.Size = UDim2.new(1, 0, 1, 0)
+        txt.BackgroundTransparency = 1
+        txt.Text = "🍎 " .. obj.Name
+        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+        txt.TextStrokeTransparency = 0
+        txt.Font = Enum.Font.Code
+        txt.TextSize = 18
+        highlight.Parent = obj
+    end
+end
+
+-- --- 3. AUTO-GET (VOAR ATÉ A FRUTA) ---
+local function voarAteFruta()
+    local char = localPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    
+    if not root then return end
+
+    local alvo = nil
+    local menorDistancia = math.huge
+
+    -- Procura a fruta mais próxima no Workspace
+    for _, v in pairs(workspace:GetChildren()) do
+        if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
+            local handle = v:FindFirstChild("Handle") or v:FindFirstChildWhichIsA("BasePart")
+            if handle then
+                local dist = (root.Position - handle.Position).Magnitude
+                if dist < menorDistancia then
+                    menorDistancia = dist
+                    alvo = handle
+                end
+            end
+        end
+    end
+
+    if alvo then
+        avisar("BUSCANDO", "Voando para a fruta...")
+        
+        -- Modo voo (ignora colisões e física)
+        hum.PlatformStand = true 
+        local distancia = (root.Position - alvo.Position).Magnitude
+        local tempo = distancia / VELOCIDADE
+        
+        local tween = TweenService:Create(root, TweenInfo.new(tempo, Enum.EasingStyle.Linear), {CFrame = alvo.CFrame})
+        tween:Play()
+        
+        tween.Completed:Connect(function()
+            hum.PlatformStand = false
+            root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+            avisar("SUCESSO", "Chegou na fruta!")
+        end)
+    else
+        avisar("AVISO", "Nenhuma fruta encontrada no mapa.")
+    end
+end
+
+-- --- EXCUÇÃO IMEDIATA E LOOPS ---
+
+-- Atalho de tecla
+UserInputService.InputBegan:Connect(function(input, proc)
+    if proc then return end
+    if input.KeyCode == Enum.KeyCode.V then
+        voarAteFruta()
+    end
+end)
+
+-- Loop principal
+task.spawn(function()
+    entrarPirata() -- Entra no time assim que injeta
+    avisar("XENO LOADED", "ESP Ativo | Time Pirata OK")
+    
+    while true do
+        -- Busca frutas continuamente no Workspace
+        for _, v in pairs(workspace:GetChildren()) do
+            if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
+                aplicarVisual(v)
+            end
+        end
+        task.wait(1) -- Atualiza a lista de ESP a cada 1 segundo
+    end
+end)
