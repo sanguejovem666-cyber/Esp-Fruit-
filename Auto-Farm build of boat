@@ -1,107 +1,155 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
 local player = Players.LocalPlayer
 
 -- Configurações
 local active = false
-local velocidade = 80 -- Ajuste a velocidade aqui
+local velocidade = 80          -- Ajuste aqui (estudos por segundo)
+local tempoParado = 1.5        -- Tempo parado em cada ponto
+
 local coords = {
-    Vector3.new(-51.81, 100.51, 1335.00),
-    Vector3.new(-62.71, 95.73, 1388.77),
-    Vector3.new(-41.52, 96.18, 2113.93),
-    Vector3.new(-39.83, 105.21, 2162.35),
-    Vector3.new(-46.74, 108.86, 2929.91),
-    Vector3.new(-50.56, 27.28, 3647.41),
-    Vector3.new(-53.73, 49.79, 3699.02),
-    Vector3.new(-57.28, 88.42, 4411.10),
-    Vector3.new(-61.39, 37.21, 5186.54),
-    Vector3.new(-62.03, 72.91, 6003.12)
+	Vector3.new(-51.81, 100.51, 1335.00),
+	Vector3.new(-62.71, 95.73, 1388.77),
+	Vector3.new(-41.52, 96.18, 2113.93),
+	Vector3.new(-39.83, 105.21, 2162.35),
+	Vector3.new(-46.74, 108.86, 2929.91),
+	Vector3.new(-50.56, 27.28, 3647.41),
+	Vector3.new(-53.73, 49.79, 3699.02),
+	Vector3.new(-57.28, 88.42, 4411.10),
+	Vector3.new(-61.39, 37.21, 5186.54),
+	Vector3.new(-62.03, 72.91, 6003.12)
 }
 
--- Variável para controlar a plataforma
 local plataformaAtual = nil
 
--- Função para criar a base de apoio
+-- Função para criar plataforma de apoio (visual + colisão)
 local function criarPlataforma(posicao)
-    if plataformaAtual then plataformaAtual:Destroy() end
-    
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(6, 1, 6)
-    part.Position = posicao - Vector3.new(0, 3.5, 0) -- Fica logo abaixo dos pés
-    part.Anchored = true
-    part.Transparency = 0.5 -- Meio transparente (apenas visual)
-    part.BrickColor = BrickColor.new("Cyan") -- Cor para você ver onde está
-    part.CanCollide = true
-    part.Parent = game.Workspace
-    plataformaAtual = part
+	if plataformaAtual then
+		plataformaAtual:Destroy()
+	end
+	
+	local part = Instance.new("Part")
+	part.Size = Vector3.new(8, 1, 8)
+	part.Position = posicao - Vector3.new(0, 3.8, 0)
+	part.Anchored = true
+	part.Transparency = 0.6
+	part.BrickColor = BrickColor.new("Cyan")
+	part.CanCollide = true
+	part.Parent = workspace
+	
+	plataformaAtual = part
 end
 
--- Função de Voo Linear
+-- Função principal de voo suave e reto
 local function voarPara(targetPos)
-    local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local root = character.HumanoidRootPart
-    
-    local distancia = (root.Position - targetPos).Magnitude
-    local tempo = distancia / velocidade
-    
-    -- EasingStyle.Linear garante que ele vá RETO e constante
-    local tweenInfo = TweenInfo.new(tempo, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(targetPos)})
-    
-    tween:Play()
-    tween.Completed:Wait()
-    
-    -- Quando chegar, cria a plataforma para travar o player parado
-    criarPlataforma(targetPos)
+	local character = player.Character
+	if not character then return end
+	
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not root or not humanoid then return end
+	
+	-- Salva a rotação atual (para não girar o personagem desnecessariamente)
+	local currentCFrame = root.CFrame
+	local targetCFrame = CFrame.new(targetPos) * (currentCFrame - currentCFrame.Position)  -- mantém rotação
+	
+	local distancia = (root.Position - targetPos).Magnitude
+	local tempo = distancia / velocidade
+	
+	-- Ancorar para eliminar tremor da física
+	root.Anchored = true
+	
+	local tweenInfo = TweenInfo.new(
+		tempo,
+		Enum.EasingStyle.Linear,     -- movimento reto e constante
+		Enum.EasingDirection.Out
+	)
+	
+	local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+	tween:Play()
+	
+	tween.Completed:Wait()
+	
+	-- Desancora após o voo
+	root.Anchored = false
+	
+	-- Cria plataforma para estabilizar
+	criarPlataforma(targetPos)
 end
 
--- Interface Profissional (Dark Theme)
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+-- Interface
+local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
-local button = Instance.new("TextButton", screenGui)
-button.Size = UDim2.new(0, 160, 0, 45)
-button.Position = UDim2.new(0.5, -80, 0.85, 0)
-button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 180, 0, 50)
+button.Position = UDim2.new(0.5, -90, 0.85, 0)
+button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.Text = "AUTO-VÔO: OFF"
 button.Font = Enum.Font.Code
-button.TextSize = 14
+button.TextSize = 15
+button.Parent = screenGui
 
-local corner = Instance.new("UICorner", button)
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = button
 
--- Loop Principal
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(60, 60, 60)
+stroke.Thickness = 1
+stroke.Parent = button
+
+-- Loop principal
 task.spawn(function()
-    while true do
-        if active then
-            for i, pos in ipairs(coords) do
-                if not active then break end
-                
-                voarPara(pos)
-                task.wait(1.5) -- Tempo parado em cada coordenada
-                
-                if i == #coords and active then
-                    if plataformaAtual then plataformaAtual:Destroy() end
-                    player.Character.Humanoid.Health = 0
-                    player.CharacterAdded:Wait()
-                    task.wait(2)
-                end
-            end
-        end
-        task.wait(0.5)
-    end
+	while true do
+		if active then
+			for i, pos in ipairs(coords) do
+				if not active then break end
+				
+				voarPara(pos)
+				task.wait(tempoParado)
+				
+				-- Último ponto: reseta e morre para repetir
+				if i == #coords and active then
+					if plataformaAtual then
+						plataformaAtual:Destroy()
+						plataformaAtual = nil
+					end
+					
+					local character = player.Character
+					if character and character:FindFirstChild("Humanoid") then
+						character.Humanoid.Health = 0
+					end
+					
+					player.CharacterAdded:Wait()
+					task.wait(2)
+				end
+			end
+		end
+		task.wait(0.3)
+	end
 end)
 
--- Controle do Botão
+-- Botão
 button.MouseButton1Click:Connect(function()
-    active = not active
-    if active then
-        button.Text = "AUTO-VÔO: ON"
-        button.TextColor3 = Color3.fromRGB(0, 255, 120)
-    else
-        button.Text = "AUTO-VÔO: OFF"
-        button.TextColor3 = Color3.fromRGB(255, 80, 80)
-        if plataformaAtual then plataformaAtual:Destroy() end
-    end
+	active = not active
+	
+	if active then
+		button.Text = "AUTO-VÔO: ON"
+		button.TextColor3 = Color3.fromRGB(0, 255, 100)
+		button.BackgroundColor3 = Color3.fromRGB(30, 50, 30)
+	else
+		button.Text = "AUTO-VÔO: OFF"
+		button.TextColor3 = Color3.fromRGB(255, 80, 80)
+		button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+		
+		if plataformaAtual then
+			plataformaAtual:Destroy()
+			plataformaAtual = nil
+		end
+	end
 end)
