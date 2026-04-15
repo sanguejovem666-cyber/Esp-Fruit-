@@ -1,0 +1,336 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+
+local TEXT = Color3.fromRGB(210,210,210)
+
+local function S(o)
+    o.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    local s = Instance.new("UIStroke",o)
+    s.Color = Color3.fromRGB(255,255,255)
+    s.Thickness = 1
+end
+
+local LG = Instance.new("ScreenGui",CoreGui)
+local LF = Instance.new("Frame",LG)
+LF.Size = UDim2.new(1,0,1,0)
+LF.BackgroundColor3 = Color3.fromRGB(0,0,0)
+
+local LI = Instance.new("ImageLabel",LF)
+LI.Size = UDim2.new(0,150,0,150)
+LI.Position = UDim2.new(0.5,-75,0.35,-75)
+LI.BackgroundTransparency = 1
+LI.Image = "rbxassetid://92058168642438"
+LI.ImageTransparency = 1
+
+local LT = Instance.new("TextLabel",LF)
+LT.Size = UDim2.new(1,0,0,40)
+LT.Position = UDim2.new(0,0,0.6,0)
+LT.Text = "HydraSpart Hub"
+LT.TextColor3 = TEXT
+LT.BackgroundTransparency = 1
+LT.TextScaled = true
+LT.Font = Enum.Font.GothamBold
+LT.TextTransparency = 1
+
+local BG = Instance.new("Frame",LF)
+BG.Size = UDim2.new(0.4,0,0,8)
+BG.Position = UDim2.new(0.3,0,0.75,0)
+BG.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+local B = Instance.new("Frame",BG)
+B.Size = UDim2.new(0,0,1,0)
+B.BackgroundColor3 = Color3.fromRGB(255,255,255)
+
+TweenService:Create(LI,TweenInfo.new(1),{ImageTransparency=0}):Play()
+TweenService:Create(LT,TweenInfo.new(1),{TextTransparency=0}):Play()
+
+for i=1,120 do
+    B.Size = UDim2.new(i/120,0,1,0)
+    task.wait(0.01)
+end
+
+task.wait(0.4)
+LG:Destroy()
+
+local G = Instance.new("ScreenGui",CoreGui)
+
+local T = Instance.new("TextButton",G)
+T.Size = UDim2.new(0,60,0,60)
+T.Position = UDim2.new(0,50,0,50)
+T.Text = ""
+S(T)
+Instance.new("UICorner",T).CornerRadius = UDim.new(1,0)
+
+local I = Instance.new("ImageLabel",T)
+I.Size = UDim2.new(1,0,1,0)
+I.BackgroundTransparency = 1
+I.Image = "rbxassetid://92058168642438"
+
+local d = false
+local ds,sp
+
+T.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+        d = true
+        ds = i.Position
+        sp = T.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(i)
+    if d and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local del = i.Position-ds
+        T.Position = UDim2.new(sp.X.Scale,sp.X.Offset+del.X,sp.Y.Scale,sp.Y.Offset+del.Y)
+        I.Rotation = I.Rotation+8
+    end
+end)
+
+UIS.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+        d = false
+    end
+end)
+
+local W = Instance.new("Frame",G)
+W.Size = UDim2.new(0,0,0,0)
+W.Position = UDim2.new(0.5,-280,0.5,-260)
+W.Visible = false
+S(W)
+Instance.new("UICorner",W).CornerRadius = UDim.new(0,12)
+
+T.MouseButton1Click:Connect(function()
+    W.Visible = true
+    if W.Size.X.Offset == 0 then
+        TweenService:Create(W,TweenInfo.new(0.25),{Size=UDim2.new(0,560,0,540)}):Play()
+    else
+        TweenService:Create(W,TweenInfo.new(0.25),{Size=UDim2.new(0,0,0,0)}):Play()
+        task.wait(0.25)
+        W.Visible = false
+    end
+end)
+
+local H = Instance.new("Frame",W)
+H.Size = UDim2.new(1,0,0,50)
+S(H)
+
+local TT = Instance.new("TextLabel",H)
+TT.Size = UDim2.new(1,0,1,0)
+TT.Text = "HydraSpart Hub"
+TT.TextColor3 = TEXT
+TT.BackgroundTransparency = 1
+TT.TextScaled = true
+TT.Font = Enum.Font.GothamBold
+
+local TB = Instance.new("Frame",W)
+TB.Size = UDim2.new(0,160,1,-50)
+TB.Position = UDim2.new(0,0,0,50)
+S(TB)
+
+local CT = Instance.new("Frame",W)
+CT.Size = UDim2.new(1,-160,1,-50)
+CT.Position = UDim2.new(0,160,0,50)
+CT.BackgroundTransparency = 1
+
+local function tab(n,y)
+    local b = Instance.new("TextButton",TB)
+    b.Size = UDim2.new(1,0,0,45)
+    b.Position = UDim2.new(0,0,0,y)
+    b.Text = n
+    b.TextColor3 = TEXT
+    S(b)
+    local f = Instance.new("Frame",CT)
+    f.Size = UDim2.new(1,0,1,0)
+    f.Visible = false
+    return b,f
+end
+
+local names = {"Teleport","Player","Extra","Blox Fruits","MM2","Natural Disaster"}
+local tabs = {}
+
+for i,v in ipairs(names) do
+    local b,f = tab(v,(i-1)*45)
+    tabs[v] = f
+    b.MouseButton1Click:Connect(function()
+        for _,t in pairs(CT:GetChildren()) do t.Visible = false end
+        f.Visible = true
+    end)
+end
+
+tabs["Teleport"].Visible = true
+
+local function btn(p,t,y)
+    local b = Instance.new("TextButton",p)
+    b.Size = UDim2.new(0.8,0,0,40)
+    b.Position = UDim2.new(0.1,0,0,y)
+    b.Text = t
+    b.TextColor3 = TEXT
+    S(b)
+    return b
+end
+
+local sc = Instance.new("ScrollingFrame",tabs["Teleport"])
+sc.Size = UDim2.new(1,0,1,0)
+sc.BackgroundTransparency = 1
+sc.ScrollBarThickness = 4
+
+local function upd()
+    for _,c in pairs(sc:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    local y = 0
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= Player then
+            local b = btn(sc,p.Name,y)
+            b.MouseButton1Click:Connect(function()
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    Player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+                end
+            end)
+            y = y+45
+        end
+    end
+    sc.CanvasSize = UDim2.new(0,0,0,y)
+end
+
+Players.PlayerAdded:Connect(upd)
+Players.PlayerRemoving:Connect(upd)
+upd()
+
+local flying = false
+local speedEnabled = false
+local espEnabled = false
+
+btn(tabs["Extra"],"Fly Toggle",20).MouseButton1Click:Connect(function()
+    flying = not flying
+    local c = Player.Character
+    local h = c:FindFirstChild("Humanoid")
+    if flying then
+        local bv = Instance.new("BodyVelocity", c.HumanoidRootPart)
+        bv.Name = "HydraFly"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0,0,0)
+        task.spawn(function()
+            while flying do
+                bv.Velocity = h.MoveDirection * 50
+                task.wait()
+            end
+            bv:Destroy()
+        end)
+    end
+end)
+
+btn(tabs["Extra"],"Velocidade +",70).MouseButton1Click:Connect(function()
+    Player.Character.Humanoid.WalkSpeed = 100
+end)
+
+btn(tabs["Extra"],"Velocidade Normal",120).MouseButton1Click:Connect(function()
+    Player.Character.Humanoid.WalkSpeed = 16
+end)
+
+btn(tabs["Extra"],"Pulo Alto",170).MouseButton1Click:Connect(function()
+    Player.Character.Humanoid.JumpPower = 150
+end)
+
+btn(tabs["Extra"],"Pulo Normal",220).MouseButton1Click:Connect(function()
+    Player.Character.Humanoid.JumpPower = 50
+end)
+
+btn(tabs["Player"],"Resetar",20).MouseButton1Click:Connect(function()
+    Player.Character:BreakJoints()
+end)
+
+btn(tabs["Player"],"WalkSpeed 60",70).MouseButton1Click:Connect(function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = 60
+    end
+end)
+
+btn(tabs["Player"],"WalkSpeed 16",120).MouseButton1Click:Connect(function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = 16
+    end
+end)
+
+btn(tabs["Player"],"Jump 120",170).MouseButton1Click:Connect(function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.JumpPower = 120
+    end
+end)
+
+btn(tabs["Player"],"Jump 50",220).MouseButton1Click:Connect(function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.JumpPower = 50
+    end
+end)
+
+btn(tabs["Blox Fruits"],"ESP Frutas",20).MouseButton1Click:Connect(function()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Tool") and v.Name:find("Fruit") then
+            local h = Instance.new("Highlight", v)
+            h.FillColor = Color3.fromRGB(255,0,255)
+        end
+    end
+end)
+
+btn(tabs["Blox Fruits"],"Clicker Fast",70).MouseButton1Click:Connect(function()
+    task.spawn(function()
+        while task.wait() do
+            local tool = Player.Character:FindFirstChildOfClass("Tool")
+            if tool then tool:Activate() end
+        end
+    end)
+end)
+
+btn(tabs["Blox Fruits"],"Auto Quest",120)
+
+btn(tabs["MM2"],"ESP Players",20).MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= Player and p.Character then
+            if espEnabled then
+                local h = Instance.new("Highlight", p.Character)
+                h.Name = "HydraESP"
+                if p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife") then
+                    h.FillColor = Color3.fromRGB(255,0,0)
+                elseif p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun") then
+                    h.FillColor = Color3.fromRGB(0,0,255)
+                else
+                    h.FillColor = Color3.fromRGB(0,255,0)
+                end
+            else
+                if p.Character:FindFirstChild("HydraESP") then p.Character.HydraESP:Destroy() end
+            end
+        end
+    end
+end)
+
+btn(tabs["MM2"],"Auto Knife",70)
+btn(tabs["MM2"],"Coin Farm",120)
+
+btn(tabs["Natural Disaster"],"Auto Win",20).MouseButton1Click:Connect(function()
+    local p = Instance.new("Part", workspace)
+    p.Size = Vector3.new(20,1,20)
+    p.Position = Vector3.new(0, 1000, 0)
+    p.Anchored = true
+    Player.Character.HumanoidRootPart.CFrame = p.CFrame * CFrame.new(0,5,0)
+end)
+
+btn(tabs["Natural Disaster"],"God Mode",70).MouseButton1Click:Connect(function()
+    Player.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+end)
+
+btn(tabs["Natural Disaster"],"Anti Fall",120).MouseButton1Click:Connect(function()
+    task.spawn(function()
+        while task.wait() do
+            if Player.Character.HumanoidRootPart.Velocity.Y < -50 then
+                Player.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
+            end
+        end
+    end)
+end)
+
+print("HydraSpart Hub Loaded")
